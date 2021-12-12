@@ -5,6 +5,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using RabbitMQ.Client;
 
 namespace Microsoft.Azure.WebJobs.Extensions.RabbitMQ
 {
@@ -29,7 +30,8 @@ namespace Microsoft.Azure.WebJobs.Extensions.RabbitMQ
 
             lock (_context.Service.PublishBatchLock)
             {
-                _context.Service.BasicPublishBatch.Add(exchange: string.Empty, routingKey: _context.ResolvedAttribute.QueueName, mandatory: false, properties: null, body: message);
+                ReadOnlyMemory<byte> body = message;
+                _context.Service.BasicPublishBatch.Add(exchange: string.Empty, routingKey: _context.ResolvedAttribute.QueueName, mandatory: false, properties: null, body: body);
             }
 
             return Task.CompletedTask;
