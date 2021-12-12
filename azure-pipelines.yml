@@ -15,7 +15,7 @@ trigger:
 
 variables:
   tag_push: $[startsWith(variables['Build.SourceBranch'], 'refs/tags/')]
-  ${{ if tag_push }}:
+  ${{ if $(tag_push) }}:
     version: $(Build.SourceBranchName) # e.g. 1.2.3
   ${{ else }}:
     prefix: $[format('0.{0:yyyy}.{0:MMdd}', pipeline.startTime)]
@@ -114,7 +114,7 @@ steps:
             }
         ]
 
-  - publish: $(Build.ArtifactStagingDirectory)\Microsoft.Azure.WebJobs.Extensions.RabbitMQ
+  - publish: $(Build.ArtifactStagingDirectory)\Microsoft.Azure.WebJobs.Extensions.RabbitMQ\Microsoft.Azure.WebJobs.Extensions.RabbitMQ.*.nupkg
     artifact: drop
     displayName: Publish extension package
     condition: $(is_tag_push)
