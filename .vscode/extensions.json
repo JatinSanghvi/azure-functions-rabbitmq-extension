@@ -1,0 +1,8 @@
+{
+    "recommendations": [
+        "ms-azure-devops.azure-pipelines",
+        "ms-dotnettools.csharp",
+        "redhat.vscode-yaml",
+        "redhat.vscode-xml"
+    ]
+}

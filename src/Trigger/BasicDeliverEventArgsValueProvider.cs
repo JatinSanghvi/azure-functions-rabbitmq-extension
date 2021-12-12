@@ -55,7 +55,7 @@ namespace Microsoft.Azure.WebJobs.Extensions.RabbitMQ
 
         public string ToInvokeString()
         {
-            return Encoding.UTF8.GetString(_input.Body);
+            return Encoding.UTF8.GetString(_input.Body.ToArray());
         }
     }
 }

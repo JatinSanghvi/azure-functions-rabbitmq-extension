@@ -43,9 +43,10 @@ namespace WebJobs.Extensions.RabbitMQ.Tests
             data.Add("RoutingKey", "QueueName");
 
             Random rand = new Random();
-            byte[] body = new byte[10];
-            rand.NextBytes(body);
+            byte[] buffer = new byte[10];
+            rand.NextBytes(buffer);
 
+            ReadOnlyMemory<byte> body = buffer;
             data.Add("Body", body);
 
             BasicDeliverEventArgs eventArgs = new BasicDeliverEventArgs("ConsumerName", deliveryTag, false, "n/a", "QueueName", null, body);
