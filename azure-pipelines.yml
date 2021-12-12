@@ -14,7 +14,8 @@ trigger:
       - v*.*.*
 
 variables:
-  ${{ if startsWith(variables['Build.SourceBranch'], 'refs/tags/') }}:
+  tag_push: $[startsWith(variables['Build.SourceBranch'], 'refs/tags/')]
+  ${{ if tag_push }}:
     version: $(Build.SourceBranchName) # e.g. 1.2.3
   ${{ else }}:
     prefix: $[format('0.{0:yyyy}.{0:MMdd}', pipeline.startTime)]
@@ -40,6 +41,7 @@ steps:
 
   - task: DotNetCoreCLI@2
     displayName: Build extension
+    condition: $(is_tag_push)
     inputs:
       command: build
       arguments: --configuration Release -property:Version=$(version) -property:CommitHash=$(Build.SourceVersion)
@@ -47,6 +49,7 @@ steps:
   # Todo: Execute task conditionally.
   - task: EsrpCodeSigning@1
     displayName: Sign extension assembly
+    condition: $(is_tag_push)
     inputs:
       ConnectedServiceName: ESRP Service
       FolderPath: src/bin/Release/netstandard2.0
@@ -78,6 +81,7 @@ steps:
 
   - task: DotNetCoreCLI@2
     displayName: Pack extension
+    condition: $(is_tag_push)
     inputs:
       command: pack
       projects: src/WebJobs.Extensions.RabbitMQ.csproj
@@ -86,6 +90,7 @@ steps:
 
   - task: EsrpCodeSigning@1
     displayName: Sign extension package
+    condition: $(is_tag_push)
     inputs:
       ConnectedServiceName: ESRP Service
       FolderPath: $(Build.ArtifactStagingDirectory)/Microsoft.Azure.WebJobs.Extensions.RabbitMQ
@@ -112,6 +117,7 @@ steps:
   - publish: $(Build.ArtifactStagingDirectory)\Microsoft.Azure.WebJobs.Extensions.RabbitMQ
     artifact: drop
     displayName: Publish extension package
+    condition: $(is_tag_push)
   
   # - task: ManifestGeneratorTask@0
   #   displayName: 'SBOM Generation Task'
