@@ -14,17 +14,20 @@ trigger:
       - v*.*.*
 
 variables:
-  tag_push: $[startsWith(variables['Build.SourceBranch'], 'refs/tags/')]
-  ${{ if $(tag_push) }}:
-    version: $(Build.SourceBranchName) # e.g. 1.2.3
-  ${{ else }}:
-    prefix: $[format('0.{0:yyyy}.{0:MMdd}', pipeline.startTime)]
-    version: $[format('{0}.{1}', variables['prefix'], counter(variables['prefix'], 1))] # e.g. 0.2001.0203.4
+  isTagTriggered: $[startsWith(variables['Build.SourceBranch'], 'refs/tags/')]
+  prefix: $[format('0.{0:yyyy}.{0:MMdd}', pipeline.startTime)]
+  version: $[format('{0}.{1}', variables['prefix'], counter(variables['prefix'], 1))] # e.g. 0.2001.0203.4
 
 pool:
   vmImage: windows-latest
 
 steps:
+  - script: |
+      set tag=$(Build.SourceBranchName)
+      echo ##vso[task.setvariable variable=version]%tag:~1%
+    displayName: Extract version # e.g. 1.2.3
+    condition: and(succeeded(), eq(variables.isTagTriggered, 'True'))
+
   - task: UseDotNet@2
     displayName: Acquire .NET SDK
     inputs:
@@ -41,7 +44,7 @@ steps:
 
   - task: DotNetCoreCLI@2
     displayName: Build extension
-    condition: $(is_tag_push)
+    condition: and(succeeded(), eq(variables.isTagTriggered, 'True'))
     inputs:
       command: build
       arguments: --configuration Release -property:Version=$(version) -property:CommitHash=$(Build.SourceVersion)
@@ -49,7 +52,7 @@ steps:
   # Todo: Execute task conditionally.
   - task: EsrpCodeSigning@1
     displayName: Sign extension assembly
-    condition: $(is_tag_push)
+    condition: and(succeeded(), eq(variables.isTagTriggered, 'True'))
     inputs:
       ConnectedServiceName: ESRP Service
       FolderPath: src/bin/Release/netstandard2.0
@@ -81,7 +84,7 @@ steps:
 
   - task: DotNetCoreCLI@2
     displayName: Pack extension
-    condition: $(is_tag_push)
+    condition: and(succeeded(), eq(variables.isTagTriggered, 'True'))
     inputs:
       command: pack
       projects: src/WebJobs.Extensions.RabbitMQ.csproj
@@ -90,7 +93,7 @@ steps:
 
   - task: EsrpCodeSigning@1
     displayName: Sign extension package
-    condition: $(is_tag_push)
+    condition: and(succeeded(), eq(variables.isTagTriggered, 'True'))
     inputs:
       ConnectedServiceName: ESRP Service
       FolderPath: $(Build.ArtifactStagingDirectory)/Microsoft.Azure.WebJobs.Extensions.RabbitMQ
@@ -117,7 +120,7 @@ steps:
   - publish: $(Build.ArtifactStagingDirectory)\Microsoft.Azure.WebJobs.Extensions.RabbitMQ\Microsoft.Azure.WebJobs.Extensions.RabbitMQ.*.nupkg
     artifact: drop
     displayName: Publish extension package
-    condition: $(is_tag_push)
+    condition: and(succeeded(), eq(variables.isTagTriggered, 'True'))
   
   # - task: ManifestGeneratorTask@0
   #   displayName: 'SBOM Generation Task'
