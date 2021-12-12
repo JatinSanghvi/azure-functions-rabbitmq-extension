@@ -1,80 +1,60 @@
 pr:
   branches:
     include:
-    - dev
-    - release/*
+      - dev
+      - v*.x
 
 trigger:
   branches:
     include:
-    - dev
-    - release/*
-    
-jobs:
-- job: InitializePipeline
-  pool:
-    vmImage: 'vs2017-win2016'
-  steps:
-  - task: PowerShell@2
-    displayName: 'Initialize'
-    name: Initialize
-    inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\initialize-pipeline.ps1'
-      arguments: '-versionPath ''$(Build.Repository.LocalPath)\src'' -javaPath ''$(Build.Repository.LocalPath)\binding-library\java'''
+      - dev
+      - v*.x
+  tags:
+    include:
+      - v*.*.*
 
-- job: MvnBuild
-  dependsOn: InitializePipeline
-  condition: ne(dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true)
-  variables:
-    mvnPrefix: $[dependencies.InitializePipeline.outputs['Initialize.MvnPackagePrefix']]
-    mvnVersion: $[dependencies.InitializePipeline.outputs['Initialize.MvnPackageVersion']]
-  pool:
-    vmImage: 'vs2017-win2016'
-  steps:
-  - task: PowerShell@2
-    displayName: 'Mvn build'
-    name: MvnBuild
-    inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\MvnBuildAndPackage.ps1'
-      arguments: '-mvnPrefix ''$(mvnPrefix)'' -mvnVersion ''$(mvnVersion)'''
-      
-- job: BuildArtifacts
-  dependsOn: 
-    - InitializePipeline
-  condition: and(succeeded(), or(ne(variables['Build.Reason'], 'PullRequest'), eq(dependencies.InitializePipeline.outputs['Initialize.BuildArtifacts'], true)))
-  variables:
-    releaseVersionNumber: $[dependencies.InitializePipeline.outputs['Initialize.BuildNumber']]
-    mvnPrefix: $[dependencies.InitializePipeline.outputs['Initialize.MvnPackagePrefix']]
-    buildCounter: $[counter(variables['releaseVersionNumber'], 1)]
-    mvnVersion: $[dependencies.InitializePipeline.outputs['Initialize.MvnPackageVersion']]
-  pool:
-    vmImage: 'vs2017-win2016'
-  steps:
-  - task: PowerShell@2 
-    displayName: 'VersioningAndSigning'
-    name: 'VersioningAndSigning'
-    inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\DetermineVersionAndSigning.ps1'
-      arguments: '-releaseVersionNumber ''$(releaseVersionNumber)'' -buildCounter ''$(buildCounter)'''
+variables:
+  isTagTriggered: $[startsWith(variables['Build.SourceBranch'], 'refs/tags/')]
+  prefix: $[format('0.{0:yyyy}.{0:MMdd}', pipeline.startTime)]
+  version: $[format('{0}.{1}', variables['prefix'], counter(variables['prefix'], 1))] # e.g. 0.2001.0203.4
+
+pool:
+  vmImage: windows-latest
+
+steps:
+  - script: |
+      set tag=$(Build.SourceBranchName)
+      echo ##vso[task.setvariable variable=version]%tag:~1%
+    displayName: Extract version # e.g. 1.2.3
+    condition: and(succeeded(), eq(variables.isTagTriggered, 'True'))
+
   - task: UseDotNet@2
+    displayName: Acquire .NET SDK
     inputs:
-      packageType: 'sdk'
-      version: '2.x'
+      packageType: sdk
+      version: 6.x
       performMultiLevelLookup: true
+
   - task: DotNetCoreCLI@2
-    displayName: 'Build RabbitMQ package'
+    displayName: Build solution
     inputs:
-      command: 'custom'
-      custom: 'build'
-      arguments: -p:Version=$(VersioningAndSigning.FullVersionNumber) -p:CommitHash=$(Build.SourceVersion) -c Release
-      projects: |
-        **\WebJobs.Extensions.RabbitMQ.csproj
-  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
-    displayName: 'ESRP CodeSigning: Strong Name and Authenticode'
+      command: build
+      arguments: --configuration Release -property:Version=$(version) -property:CommitHash=$(Build.SourceVersion)
+
+  - task: DotNetCoreCLI@2
+    displayName: Test extension
     inputs:
-      ConnectedServiceName: 'ESRP Service'
-      FolderPath: 'src\bin\Release\netstandard2.0'
-      Pattern: WebJobs.Extensions.RabbitMQ*.dll
+      command: test
+      projects: test/WebJobs.Extensions.RabbitMQ.Tests/WebJobs.Extensions.RabbitMQ.Tests.csproj
+      arguments: --configuration Debug
+
+  - task: EsrpCodeSigning@1
+    displayName: Sign extension assembly
+    condition: and(succeeded(), eq(variables.isTagTriggered, 'True'))
+    inputs:
+      ConnectedServiceName: ESRP Service
+      FolderPath: src/bin/Release/netstandard2.0
+      Pattern: WebJobs.Extensions.RabbitMQ.dll
       signConfigType: inlineSignParams
       inlineOperation: |
         [
@@ -99,26 +79,26 @@ jobs:
             "ToolVersion": "1.0"
           }
         ]
-    condition: and(succeeded(), startsWith(variables['VersioningAndSigning.SignArtifacts'], 'true')) 
-  - task: DeleteFiles@1
-    displayName: 'Delete CodeSignSummary files'
-    inputs:
-      contents: '**\CodeSignSummary-*.md'
-    condition: and(succeeded(), startsWith(variables['VersioningAndSigning.SignArtifacts'], 'true')) 
+
   - task: DotNetCoreCLI@2
-    displayName: 'Pack RabbitMQ package'
+    displayName: Pack extension
+    condition: and(succeeded(), eq(variables.isTagTriggered, 'True'))
     inputs:
-      command: 'custom'
-      custom: 'pack'
-      arguments: '--no-build -p:Version=$(VersioningAndSigning.FullVersionNumber) -p:CommitHash=$(Build.SourceVersion) -c Release -o packages\Microsoft.Azure.WebJobs.Extensions.RabbitMQ'
-      projects: |
-        **\WebJobs.Extensions.RabbitMQ.csproj
-  - task: SFP.build-tasks.custom-build-task-1.EsrpCodeSigning@1
-    displayName: 'ESRP CodeSigning: Nupkg'
+      command: pack
+      searchPatternPack: src/WebJobs.Extensions.RabbitMQ.csproj
+      configurationToPack: Release
+      buildProperties: Version=$(version);CommitHash=$(Build.SourceVersion)
+      outputDir: $(Build.ArtifactStagingDirectory)/Microsoft.Azure.WebJobs.Extensions.RabbitMQ
+      nobuild: true
+      verbosityPack: minimal
+
+  - task: EsrpCodeSigning@1
+    displayName: Sign extension package
+    condition: and(succeeded(), eq(variables.isTagTriggered, 'True'))
     inputs:
-      ConnectedServiceName: 'ESRP Service'
-      FolderPath: 'packages\Microsoft.Azure.WebJobs.Extensions.RabbitMQ'
-      Pattern: 'Microsoft.Azure.WebJobs.Extensions.RabbitMQ*.nupkg'
+      ConnectedServiceName: ESRP Service
+      FolderPath: $(Build.ArtifactStagingDirectory)/Microsoft.Azure.WebJobs.Extensions.RabbitMQ
+      Pattern: Microsoft.Azure.WebJobs.Extensions.RabbitMQ.*.nupkg
       signConfigType: inlineSignParams
       inlineOperation: |
         [
@@ -137,38 +117,34 @@ jobs:
               "ToolVersion": "1.0"
             }
         ]
-    condition: and(succeeded(), startsWith(variables['VersioningAndSigning.SignArtifacts'], 'true')) 
-  - task: DeleteFiles@1
-    displayName: 'Delete CodeSignSummary files'
-    inputs:
-      contents: '**\CodeSignSummary-*.md'
-    condition: and(succeeded(), startsWith(variables['VersioningAndSigning.SignArtifacts'], 'true'))
-  - task: PowerShell@2
-    displayName: 'Mvn package'
-    name: MvnBuildAndPackage
-    inputs:
-      filePath: '$(Build.Repository.LocalPath)\build\mvnBuildAndPackage.ps1'
-      arguments: '-mvnPrefix ''$(mvnPrefix)'' -mvnVersion ''$(mvnVersion)'''
-  - publish: $(Build.Repository.LocalPath)\packages\Microsoft.Azure.WebJobs.Extensions.RabbitMQ
-    artifact: NugetPackage
-  - publish: $(Build.Repository.LocalPath)\binding-library\java\ToBePublished
-    artifact: MavenPackage
 
-- job: RunTests
-  pool:
-    vmImage: 'vs2017-win2016'
-  steps: 
-  - task: UseDotNet@2
-    inputs:
-      packageType: 'sdk'
-      version: '2.x'
-      performMultiLevelLookup: true
-  - task: DotNetCoreCLI@2
-    displayName: 'Tests'
-    inputs:
-      command: 'test'
-      testRunTitle: 'Tests'
-      arguments: '-v n'
-      projects: |
-        **\WebJobs.Extensions.RabbitMQ.Tests.csproj
+  - publish: $(Build.ArtifactStagingDirectory)/Microsoft.Azure.WebJobs.Extensions.RabbitMQ
+    displayName: Publish extension package
+    artifact: drop
+    condition: and(succeeded(), eq(variables.isTagTriggered, 'True'))
+  
+  # - task: ManifestGeneratorTask@0
+  #   displayName: 'SBOM Generation Task'
+  #   inputs:
+  #     BuildDropPath: '$(Build.ArtifactStagingDirectory)'
+  #     PackageName: 'Microsoft.Azure.WebJobs.Extensions.Kafka'
+  #     Verbosity: 'Information'
 
+  # - task: PublishBuildArtifacts@1
+  #   inputs:
+  #     pathToPublish: '$(Build.ArtifactStagingDirectory)'
+  #     artifactName: 'drop'
+  #     publishLocation: 'Container'
+
+  # - task: Maven@3
+  #   displayName: Set Java bindings package version
+  #   inputs:
+  #     mavenPomFile: binding-library/java/pom.xml
+  #     goals: versions:set
+  #     options: --define=newVersion=$(version)
+
+  # - task: Maven@3
+  #   displayName: Build Java bindings package
+  #   inputs:
+  #     mavenPomFile: binding-library/java/pom.xml
+  #     options: --batch-mode --define=gpg.skip --define=org.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn --update-snapshots
