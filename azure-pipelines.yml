@@ -16,7 +16,7 @@ trigger:
 variables:
   isTagTriggered: $[startsWith(variables['Build.SourceBranch'], 'refs/tags/')]
   prefix: $[format('0.{0:yyyy}.{0:MMdd}', pipeline.startTime)]
-  version: $[format('{0}.{1}', variables['prefix'], counter(variables['prefix'], 1))] # e.g. 0.2001.0203.4
+  version: $[format('{0}.{1}', variables.prefix, counter(variables.prefix, 1))] # e.g. 0.2001.0203.4
 
 pool:
   vmImage: windows-latest
@@ -52,9 +52,9 @@ steps:
     displayName: Sign extension assembly
     condition: and(succeeded(), eq(variables.isTagTriggered, 'True'))
     inputs:
-      ConnectedServiceName: ESRP Service
-      FolderPath: src/bin/Release/netstandard2.0
-      Pattern: WebJobs.Extensions.RabbitMQ.dll
+      connectedServiceName: ESRP Service
+      folderPath: src/bin/Release/netstandard2.0
+      pattern: WebJobs.Extensions.RabbitMQ.dll
       signConfigType: inlineSignParams
       inlineOperation: |
         [
@@ -96,9 +96,9 @@ steps:
     displayName: Sign extension package
     condition: and(succeeded(), eq(variables.isTagTriggered, 'True'))
     inputs:
-      ConnectedServiceName: ESRP Service
-      FolderPath: $(Build.ArtifactStagingDirectory)/Microsoft.Azure.WebJobs.Extensions.RabbitMQ
-      Pattern: Microsoft.Azure.WebJobs.Extensions.RabbitMQ.*.nupkg
+      connectedServiceName: ESRP Service
+      folderPath: $(Build.ArtifactStagingDirectory)/Microsoft.Azure.WebJobs.Extensions.RabbitMQ
+      pattern: Microsoft.Azure.WebJobs.Extensions.RabbitMQ.*.nupkg
       signConfigType: inlineSignParams
       inlineOperation: |
         [
@@ -118,23 +118,25 @@ steps:
             }
         ]
 
+  - task: DeleteFiles@1
+    displayName: Cleanup staging directory
+    condition: and(succeeded(), eq(variables.isTagTriggered, 'True'))
+    inputs:
+      sourceFolder: $(Build.ArtifactStagingDirectory)/Microsoft.Azure.WebJobs.Extensions.RabbitMQ
+      contents: CodeSignSummary-*.md
+
+  - task: ManifestGeneratorTask@0
+    displayName: Generate SBOM manifest
+    condition: and(succeeded(), eq(variables.isTagTriggered, 'True'))
+    inputs:
+        buildDropPath: $(System.ArtifactsDirectory)/Microsoft.Azure.WebJobs.Extensions.RabbitMQ
+        packageName: Azure Functions RabbitMQ Extension
+        packageVersion: $(version)
+
   - publish: $(Build.ArtifactStagingDirectory)/Microsoft.Azure.WebJobs.Extensions.RabbitMQ
     displayName: Publish extension package
-    artifact: drop
     condition: and(succeeded(), eq(variables.isTagTriggered, 'True'))
-  
-  # - task: ManifestGeneratorTask@0
-  #   displayName: 'SBOM Generation Task'
-  #   inputs:
-  #     BuildDropPath: '$(Build.ArtifactStagingDirectory)'
-  #     PackageName: 'Microsoft.Azure.WebJobs.Extensions.Kafka'
-  #     Verbosity: 'Information'
-
-  # - task: PublishBuildArtifacts@1
-  #   inputs:
-  #     pathToPublish: '$(Build.ArtifactStagingDirectory)'
-  #     artifactName: 'drop'
-  #     publishLocation: 'Container'
+    artifact: drop-extension
 
   # - task: Maven@3
   #   displayName: Set Java bindings package version
