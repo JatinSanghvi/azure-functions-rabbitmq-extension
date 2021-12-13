@@ -14,9 +14,9 @@ trigger:
       - v*.*.*
 
 variables:
-  isTagTriggered: $[startsWith(variables['Build.SourceBranch'], 'refs/tags/')]
+  isTagTriggered: $[startsWith(variables.Build.SourceBranch, 'refs/tags/')]
   prefix: $[format('0.{0:yyyy}.{0:MMdd}', pipeline.startTime)]
-  version: $[format('{0}.{1}', variables['prefix'], counter(variables['prefix'], 1))] # e.g. 0.2001.0203.4
+  version: $[format('{0}.{1}', variables.prefix, counter(variables.prefix, 1))] # e.g. 0.2001.0203.4
 
 pool:
   vmImage: windows-latest
