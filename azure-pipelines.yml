@@ -16,7 +16,7 @@ trigger:
 variables:
   isTagTriggered: $[startsWith(variables['Build.SourceBranch'], 'refs/tags/')]
   prefix: $[format('0.{0:yyyy}.{0:MMdd}', pipeline.startTime)]
-  version: $[format('{0}.{1}', variables['prefix'], counter(variables['prefix'], 1))] # e.g. 0.2001.0203.4
+  version: $[format('{0}.{1}', variables.prefix, counter(variables.prefix, 1))] # e.g. 0.2001.0203.4
 
 pool:
   vmImage: windows-latest
@@ -118,11 +118,18 @@ steps:
             }
         ]
 
+  - task: DeleteFiles@1
+    displayName: Cleanup staging directory
+    condition: and(succeeded(), eq(variables.isTagTriggered, 'True'))
+    inputs:
+      SourceFolder: $(Build.ArtifactStagingDirectory)/Microsoft.Azure.WebJobs.Extensions.RabbitMQ
+      Contents: '(Microsoft.Azure.WebJobs.Extensions.RabbitMQ.*.nupkg)'
+
   - publish: $(Build.ArtifactStagingDirectory)/Microsoft.Azure.WebJobs.Extensions.RabbitMQ
     displayName: Publish extension package
-    artifact: drop
     condition: and(succeeded(), eq(variables.isTagTriggered, 'True'))
-  
+    artifact: drop
+
   # - task: ManifestGeneratorTask@0
   #   displayName: 'SBOM Generation Task'
   #   inputs:
