@@ -31,17 +31,13 @@ jobs:
       dropPath: $(System.ArtifactsDirectory)\azure-functions-rabbitmq-extension\net\$(version)
     steps:
       - powershell: | # Allow tags matching v1.2.3 and v1.2.3-xyz1
-          $found = $env:BUILD_SOURCEBRANCHNAME | Select-String -Pattern '^v(\d+\.\d+\.\d+)(?:-\w+)*$'
+          $found = $(Build.SourceBranchName) | Select-String -Pattern '^v(\d+\.\d+\.\d+)(?:-\w+)*$'
           if (-not $found) {
-            Write-Error "Found unexpected tag name: $($env:BUILD_SOURCEBRANCHNAME)."
+            Write-Error "Found unexpected tag name: $(Build.ArtifactStagingDirectory)."
             exit 1
           }
           Write-Host "##vso[task.setvariable variable=version]$($found.Matches.Groups[1].Value)"
           Write-Host "##vso[task.setvariable variable=fileVersion]$($found.Matches.Groups[2].Value)"
-
-          $found2 = $(Build.ArtifactStagingDirectory) | Select-String -Pattern '^v(\d+\.\d+\.\d+)(?:-\w+)*$'
-          Write-Host $found2.Matches.Groups[1].Value
-          Write-Host "Found unexpected tag name: $(Build.ArtifactStagingDirectory)."
         displayName: Extract version # e.g. 1.2.3
         condition: and(succeeded(), eq(variables.isTagTriggered, 'True'))
 
@@ -102,7 +98,6 @@ jobs:
             exit 1
           }
           Write-Host "##vso[task.setvariable variable=version]$($found.Matches.Groups[1].Value)"
-          Write-Host "##vso[task.setvariable variable=fileVersion]$($found.Matches.Groups[2].Value)"
         displayName: Extract version # e.g. 1.2.3
         condition: and(succeeded(), eq(variables.isTagTriggered, 'True'))
 
@@ -123,6 +118,7 @@ jobs:
           $prefix = 'azure-functions-java-library-rabbitmq-$(version)'
           $source = 'binding-library\java'
 
+          New-Item '$(dropPath)' -ItemType Directory
           Copy-Item "$source\pom.xml" "$(dropPath)\$prefix.pom"
           Copy-Item "$source\target\$prefix.jar" "$(dropPath)\$prefix.jar"
           Copy-Item "$source\target\$prefix-javadoc.jar" "$(dropPath)\$prefix-javadoc.jar"
