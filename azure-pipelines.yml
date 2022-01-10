@@ -31,7 +31,7 @@ jobs:
       dropPath: $(System.ArtifactsDirectory)\azure-functions-rabbitmq-extension\net\$(version)
     steps:
       - powershell: | # Allow tags matching v1.2.3 and v1.2.3-xyz1
-          $found = $(Build.SourceBranchName) | Select-String -Pattern '^v(\d+\.\d+\.\d+)(?:-\w+)*$'
+          $found = '$(Build.SourceBranchName)' | Select-String -Pattern '^v(\d+\.\d+\.\d+)(?:-\w+)*$'
           if (-not $found) {
             Write-Error "Found unexpected tag name: $(Build.ArtifactStagingDirectory)."
             exit 1
@@ -92,9 +92,9 @@ jobs:
       dropPath: $(System.ArtifactsDirectory)\azure-functions-rabbitmq-extension\java\$(version)
     steps:
       - powershell: | # Allow tags matching v1.2.3 and v1.2.3-xyz1
-          $found = $env:BUILD_SOURCEBRANCHNAME | Select-String -Pattern '^v(\d+\.\d+\.\d+)(?:-\w+)*$'
+          $found = '$(Build.SourceBranchName)' | Select-String -Pattern '^v(\d+\.\d+\.\d+)(?:-\w+)*$'
           if (-not $found) {
-            Write-Error "Found unexpected tag name: $($env:BUILD_SOURCEBRANCHNAME)."
+            Write-Error "Found unexpected tag name: $(Build.ArtifactStagingDirectory)."
             exit 1
           }
           Write-Host "##vso[task.setvariable variable=version]$($found.Matches.Groups[1].Value)"
