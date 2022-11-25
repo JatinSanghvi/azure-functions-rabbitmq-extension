@@ -18,19 +18,15 @@ variables:
   prefix: $[format('0.{0:yyyy}.{0:MMdd}', pipeline.startTime)]
   version: $[format('{0}.{1}', variables.prefix, counter(variables.prefix, 1))] # e.g. 0.2001.0203.4
   fileVersion: $[variables.version]
-  vmImages:
-    [
-      { displayName: "Windows", name: "windows-latest" },
-      { displayName: "Ubuntu", name: "ubuntu-latest" },
-    ]
+  vmImages: 'Windows:windows-latest,Ubuntu:ubuntu-latest'
 
 jobs:
-  - ${{ each vmImage in variables.vmImages }}:
-      - job: buildExtension${{ vmImage.displayName }}
-        displayName: WebJobs extension (${{ vmImage.displayName }})
+  - ${{ each vmImage in split(variables.vmImages, ',') }}:
+      - job: buildExtension${{ split(variables.vmImage, ':')[0] }}
+        displayName: WebJobs extension (${{ split(variables.vmImage, ':')[0] }})
 
         pool:
-          vmImage: ${{ vmImage.name }}
+          vmImage: ${{ split(variables.vmImage, ':')[1] }}
 
         steps:
           - powershell: | # Allow tags matching v1.2.3 and v1.2.3-xyz1
@@ -157,10 +153,12 @@ jobs:
             condition: and(succeeded(), eq(variables.isTagTriggered, 'True'))
             artifact: drop-extension
 
-      - job: buildJavaLibrary${{ vmImage.displayName }}
-        displayName: Java library (${{ vmImage.displayName }})
+      - job: buildJavaLibrary${{ split(variables.vmImage, ':')[0] }}
+        displayName: Java library (${{ split(variables.vmImage, ':')[0] }})
+
         pool:
-          vmImage: ${{ vmImage.name }}
+          vmImage: ${{ split(variables.vmImage, ':')[1] }}
+
         steps:
           - powershell: | # Allow tags matching v1.2.3 and v1.2.3-xyz1
               $found = '$(Build.SourceBranchName)' | Select-String -Pattern '^v((?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-\w+)?)$'
