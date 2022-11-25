@@ -14,12 +14,11 @@ trigger:
       - v*.*.*
 
 variables:
+  vmImages: 'Windows:windows-latest,Ubuntu:ubuntu-latest'
   isTagTriggered: $[startsWith(variables['Build.SourceBranch'], 'refs/tags/')]
   prefix: $[format('0.{0:yyyy}.{0:MMdd}', pipeline.startTime)]
   version: $[format('{0}.{1}', variables.prefix, counter(variables.prefix, 1))] # e.g. 0.2001.0203.4
   fileVersion: $[variables.version]
-  publishPackages: $[and(eq(variables.isTagTriggered, 'True'), eq(Agent.OS, 'Windows_NT'))]
-  vmImages: 'Windows:windows-latest,Ubuntu:ubuntu-latest'
 
 jobs:
   - ${{ each vmImage in split(variables.vmImages, ',') }}:
@@ -38,8 +37,10 @@ jobs:
               }
               Write-Host "##vso[task.setvariable variable=version]$($found.Matches.Groups[1].Value)"
               Write-Host "##vso[task.setvariable variable=fileVersion]$($found.Matches.Groups[2].Value)"
+              Write-Host "##vso[task.setvariable variable=publishPackages]True"
+
             displayName: Extract version # e.g. 1.2.3
-            condition: and(succeeded(), eq(variables.publishPackages, 'True'))
+            condition: and(succeeded(), eq(variables.isTagTriggered, 'True'), eq(vmImage, 'Windows'))
 
           - task: UseDotNet@2
             displayName: Acquire .NET Core 2.1 SDK
@@ -175,8 +176,9 @@ jobs:
                 exit 1
               }
               Write-Host "##vso[task.setvariable variable=version]$($found.Matches.Groups[1].Value)"
+              Write-Host "##vso[task.setvariable variable=publishPackages]True"
             displayName: Extract version # e.g. 1.2.3
-            condition: and(succeeded(), eq(variables.publishPackages, 'True'))
+            condition: and(succeeded(), eq(variables.isTagTriggered, 'True'), eq(vmImage, 'Windows'))
 
             # A combination of --batch-mode and --define=org.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
             # options prevents spurious logging about downloading of Maven packages.
