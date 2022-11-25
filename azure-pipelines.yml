@@ -40,7 +40,7 @@ jobs:
               Write-Host "##vso[task.setvariable variable=publishPackages]True"
 
             displayName: Extract version # e.g. 1.2.3
-            condition: and(succeeded(), eq(variables.isTagTriggered, 'True'), eq(vmImage, 'Windows'))
+            condition: and(succeeded(), eq(variables.isTagTriggered, 'True'), eq(split(vmImage, ':')[0], 'Windows'))
 
           - task: UseDotNet@2
             displayName: Acquire .NET Core 2.1 SDK
@@ -178,7 +178,7 @@ jobs:
               Write-Host "##vso[task.setvariable variable=version]$($found.Matches.Groups[1].Value)"
               Write-Host "##vso[task.setvariable variable=publishPackages]True"
             displayName: Extract version # e.g. 1.2.3
-            condition: and(succeeded(), eq(variables.isTagTriggered, 'True'), eq(vmImage, 'Windows'))
+            condition: and(succeeded(), eq(variables.isTagTriggered, 'True'), eq(split(vmImage, ':')[0], 'Windows'))
 
             # A combination of --batch-mode and --define=org.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn
             # options prevents spurious logging about downloading of Maven packages.
