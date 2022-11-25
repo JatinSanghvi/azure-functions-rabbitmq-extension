@@ -1,13 +1,13 @@
 pr:
   branches:
     include:
-      - dev
+      - integration-test
       - v*.x
 
 trigger:
   branches:
     include:
-      - dev
+      - integration-test
       - v*.x
   tags:
     include:
@@ -18,11 +18,6 @@ variables:
   prefix: $[format('0.{0:yyyy}.{0:MMdd}', pipeline.startTime)]
   version: $[format('{0}.{1}', variables.prefix, counter(variables.prefix, 1))] # e.g. 0.2001.0203.4
   fileVersion: $[variables.version]
-
-pool:
-  name: 1ES-Hosted-AzFunc
-  demands:
-    - ImageOverride -equals MMS2022TLS
 
 jobs:
   - job: buildExtension
