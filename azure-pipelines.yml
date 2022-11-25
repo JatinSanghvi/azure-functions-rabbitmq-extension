@@ -14,7 +14,7 @@ trigger:
       - v*.*.*
 
 variables:
-  vmImages: 'Windows:windows-latest,Linux:ubuntu-latest'
+  vmImages: 'Windows:MMS2019TLS,Linux:MMSUbuntu20.04TLS'
   isTagTriggered: ${{ startsWith(variables['Build.SourceBranch'], 'refs/tags/') }}
   prefix: $[format('0.{0:yyyy}.{0:MMdd}', pipeline.startTime)]
   version: $[format('{0}.{1}', variables.prefix, counter(variables.prefix, 1))] # e.g. 0.2001.0203.4
@@ -26,6 +26,7 @@ jobs:
         displayName: WebJobs Extension (${{ split(vmImage, ':')[0] }})
 
         pool:
+          name: 1ES-Hosted-AzFunc
           vmImage: ${{ split(vmImage, ':')[1] }}
 
         steps:
@@ -41,6 +42,7 @@ jobs:
 
               displayName: Extract version # e.g. 1.2.3
 
+            # .NET Core 2.1 SDK is required by ESRP Code Signing tasks.
             - task: UseDotNet@2
               displayName: Acquire .NET Core 2.1 SDK
               inputs:
@@ -160,6 +162,7 @@ jobs:
         displayName: Java library (${{ split(vmImage, ':')[0] }})
 
         pool:
+          name: 1ES-Hosted-AzFunc
           vmImage: ${{ split(vmImage, ':')[1] }}
 
         steps:
