@@ -22,11 +22,11 @@ variables:
 
 jobs:
   - ${{ each vmImage in split(variables.vmImages, ',') }}:
-      - job: buildExtension${{ split(variables.vmImage, ':')[0] }}
-        displayName: WebJobs extension (${{ split(variables.vmImage, ':')[0] }})
+      - job: buildExtension${{ split(vmImage, ':')[0] }}
+        displayName: WebJobs extension (${{ split(vmImage, ':')[0] }})
 
         pool:
-          vmImage: ${{ split(variables.vmImage, ':')[1] }}
+          vmImage: ${{ split(vmImage, ':')[1] }}
 
         steps:
           - powershell: | # Allow tags matching v1.2.3 and v1.2.3-xyz1
@@ -153,11 +153,11 @@ jobs:
             condition: and(succeeded(), eq(variables.isTagTriggered, 'True'))
             artifact: drop-extension
 
-      - job: buildJavaLibrary${{ split(variables.vmImage, ':')[0] }}
-        displayName: Java library (${{ split(variables.vmImage, ':')[0] }})
+      - job: buildJavaLibrary${{ split(vmImage, ':')[0] }}
+        displayName: Java library (${{ split(vmImage, ':')[0] }})
 
         pool:
-          vmImage: ${{ split(variables.vmImage, ':')[1] }}
+          vmImage: ${{ split(vmImage, ':')[1] }}
 
         steps:
           - powershell: | # Allow tags matching v1.2.3 and v1.2.3-xyz1
