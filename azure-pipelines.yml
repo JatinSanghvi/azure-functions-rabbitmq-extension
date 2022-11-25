@@ -23,7 +23,7 @@ variables:
 jobs:
   - ${{ each vmImage in split(variables.vmImages, ',') }}:
       - job: buildExtension${{ split(vmImage, ':')[0] }}
-        displayName: WebJobs extension (${{ split(vmImage, ':')[0] }})
+        displayName: WebJobs Extension (${{ split(vmImage, ':')[0] }})
 
         pool:
           vmImage: ${{ split(vmImage, ':')[1] }}
@@ -44,7 +44,7 @@ jobs:
             displayName: Acquire .NET SDK
             inputs:
               packageType: sdk
-              version: 7
+              version: 7.x
               performMultiLevelLookup: true
 
           - task: DotNetCoreCLI@2
