@@ -25,7 +25,7 @@ jobs:
         displayName: WebJobs Extension (${{ agentOS }})
 
         variables:
-          isReleaseBuild: ${{ if and(eq(agentOS, 'Windows'), eq(variables.isTagTriggered, 'True')) }}
+          isReleaseBuild: ${{ and(eq(agentOS, 'Windows'), eq(variables.isTagTriggered, 'True')) }}
 
         pool:
           ${{ if eq(variables.isReleaseBuild, 'True') }}:
@@ -176,7 +176,7 @@ jobs:
         displayName: Java library (${{ agentOS }})
 
         variables:
-          isReleaseBuild: ${{ if and(eq(agentOS, 'Windows'), eq(variables.isTagTriggered, 'True')) }}
+          isReleaseBuild: ${{ and(eq(agentOS, 'Windows'), eq(variables.isTagTriggered, 'True')) }}
 
         pool:
           ${{ if eq(variables.isReleaseBuild, 'True') }}:
