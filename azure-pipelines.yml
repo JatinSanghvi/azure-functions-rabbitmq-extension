@@ -14,18 +14,22 @@ trigger:
       - v*.*.*
 
 variables:
-  isTagTriggered: ${{ startsWith(variables['Build.SourceBranch'], 'refs/tags/') }}
+  # It is a release build if it is triggered by pushing a tag.
+  isReleaseBuild: ${{ startsWith(variables['Build.SourceBranch'], 'refs/tags/') }}
+
+  ${{ if eq(variables.isReleaseBuild, 'True') }}:
+    agentOSes: Windows
+  ${{ else }}:
+    agentOSes: Windows,Linux
+
   prefix: $[format('0.{0:yyyy}.{0:MMdd}', pipeline.startTime)]
   version: $[format('{0}.{1}', variables.prefix, counter(variables.prefix, 1))] # e.g. 0.2001.0203.4
   fileVersion: $[variables.version]
 
 jobs:
-  - ${{ each agentOS in split('Windows,Linux', ',') }}:
+  - ${{ each agentOS in split(variables.agentOSes, ',') }}:
       - job: buildExtension${{ agentOS }}
         displayName: WebJobs Extension (${{ agentOS }})
-
-        variables:
-          isReleaseBuild: ${{ and(eq(agentOS, 'Windows'), eq(variables.isTagTriggered, 'True')) }}
 
         pool:
           ${{ if eq(variables.isReleaseBuild, 'True') }}:
@@ -174,9 +178,6 @@ jobs:
 
       - job: buildJavaLibrary${{ agentOS }}
         displayName: Java library (${{ agentOS }})
-
-        variables:
-          isReleaseBuild: ${{ and(eq(agentOS, 'Windows'), eq(variables.isTagTriggered, 'True')) }}
 
         pool:
           ${{ if eq(variables.isReleaseBuild, 'True') }}:
