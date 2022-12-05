@@ -8,7 +8,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Extensions.RabbitMQ.Tests;
+namespace Microsoft.Azure.WebJobs.Extensions.RabbitMQ.UnitTests;
 
 public class RabbitMQOptionsTests
 {

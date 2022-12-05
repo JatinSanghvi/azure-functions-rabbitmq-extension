@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 using Moq;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Extensions.RabbitMQ.Tests;
+namespace Microsoft.Azure.WebJobs.Extensions.RabbitMQ.UnitTests;
 
 public class RabbitMQConfigProviderTests
 {

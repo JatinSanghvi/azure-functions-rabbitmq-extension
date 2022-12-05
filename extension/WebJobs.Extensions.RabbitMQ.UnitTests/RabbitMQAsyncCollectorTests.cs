@@ -9,7 +9,7 @@ using Moq;
 using RabbitMQ.Client;
 using Xunit;
 
-namespace Microsoft.Azure.WebJobs.Extensions.RabbitMQ.Tests;
+namespace Microsoft.Azure.WebJobs.Extensions.RabbitMQ.UnitTests;
 
 public class RabbitMQAsyncCollectorTests
 {
